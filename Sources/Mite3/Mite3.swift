@@ -48,15 +48,60 @@ public enum Mite3Error: Error {
     }
 }
 
-/// Provides utilities for calling sqlite3 from Swift.
+/// Utilities to make it easier and more convenient to use sqlite3 from Swift and
+/// reduce related boilerplate code.
 ///
-/// This library is specifically intended to *not* wrap sqlite3 (which already has a carefully designed, documented and maintained API)
-/// but instead to provide utilities to make it easier and more convenient to use from Swift and reduce common boilerplate code.
+/// Note: this is specifically intended to <u>not</u> wrap sqlite3 (<a href="#whynowrapper">more on this</a>).
+///
+/// | | |
+/// |-|-|
+/// | Result Code Utilities | convert the result of calling an sqlite3 API function to a thrown error when the result is an error, or to a success/failure `Result<S,F>`. |
+/// | `exec()` / `query()` / `queryOne()` / `queryOneOptional()` | Execute SQL statments on a database connection. Accepts any `Encodable` for parameters, and any `Decodable` for results. |
+/// | Binding and reading to/from statements | Use the same `Codable`-based parameter binding and row reading that the `exec` and `query*` functions provide, but directly on sqlite3 statements prepared outside of Mite3.|
+/// | `Mite3.Value` utility type| A variant type capable of directly representing sqlite3 fundamental data types. |
+/// | `Mite3.CustomRepresentation` | Customizing how Mite3 binds/reads values to/from statements. |
+///
+/// ### Usage Examples ###
+///
+///
+/// ```swift
+///     var pDb: OpaquePointer! = nil
+///     try Mite3.call { sqlite3_open(":memory:", &pDb) }
+///     defer { sqlite3_close(pDb) }
+///
+///     try Mite3.exec(pDb: pDb, sql: "CREATE TABLE user (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT)")
+///     try Mite3.exec(pDb: pDb,
+///         sql: "INSERT INTO user(name) VALUES (?), (?), (?)",
+///         params: ["John Smith", "Annie Oakley", "Jerry West"]
+///     )
+///
+///     let jUsers = try Mite3.query(pDb: pDb,
+///         sql: "SELECT id, name FROM user WHERE name like ? ORDER BY name",
+///         params: "J%",
+///         type: User.self
+///     )
+///     print(jUsers) // output: [{"id":3,"name":"Jerry West"}, {"id":1,"name":"John Smith"}]
+///
+///     let aRowOfValues = try Mite3.queryOne(pDb: pDb,
+///         sql: "SELECT datetime('2024-10-03 10:11:12') someDate, 1+2+3 someNum, 'abc' someStr",
+///         type: [Mite3.Value].self
+///     )
+///     print(aRowOfValues[0]) // output: 2024-10-03 10:11:12
+///     print(aRowOfValues[1]) // output: 6
+///     print(aRowOfValues[2]) // output: abc
+///
+///     struct User: Codable, CustomStringConvertible {
+///         let id: Int
+///         let name: String
+///         let notes: String?
+///         var description: String { String(data: try! JSONEncoder().encode(self), encoding: .utf8)! }
+///     }
+/// ```
 ///
 /// ### Result Code Utilities ###
 ///
-/// These are functions to convert the result of calling an sqlite3 API function to a thrown error when the result is an error, or to a
-/// success/failure Result<S,F>.
+/// These are functions to convert the result of calling an sqlite3 API function to a thrown error when
+/// the result is an error, or to a success/failure `Result<S,F>`.
 ///
 /// The errors generated contain extended information about the error. This is pulled from sqlite3_errstr() and, when the database
 /// connection is provided, sqlite3_errmsg(). The symbolic name of the code is also provided, as well as code comments from
@@ -163,6 +208,14 @@ public enum Mite3Error: Error {
 ///
 /// Provides an OO-style interface as an alternative to the functions that take a database pointer as the first parameter.
 ///
+/// <p id="whynowrapper">
+/// ### Why No Wrapper?
+/// Sqlite3 already has a carefully designed, carefully documented and carefully maintained API that can be called
+/// directly from Swift.
+///
+/// Why learn and use some alternative similar-but-different wrapper API rather than the real
+/// thing? Especially when the wrapper is likely incomplete and leaky... ultimately you'll need to learn the
+/// sqlite3 API anyway, on top of the wrapper API, and work out the details of how the wrapper maps to sqlite3.
 public struct Mite3 {
     
     ///
