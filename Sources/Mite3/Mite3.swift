@@ -579,7 +579,7 @@ public struct Mite3 {
             self.closeAutomatically = closeAutomatically
         }
 
-        init(filename: String) throws (Mite3Error) {
+        public init(filename: String) throws (Mite3Error) {
             var pDb: OpaquePointer? = nil
             let _ = try Mite3.call { sqlite3_open(filename, &pDb) }
             guard let pDb = pDb else { throw Mite3Error(code: SQLITE_ERROR) }
@@ -587,7 +587,7 @@ public struct Mite3 {
             self.closeAutomatically = true
         }
         
-        init(filename: String, flags: Int32, vfs: String? = nil) throws (Mite3Error) {
+        public init(filename: String, flags: Int32, vfs: String? = nil) throws (Mite3Error) {
             var pDb: OpaquePointer? = nil
             let _ = try Mite3.call { sqlite3_open_v2(filename, &pDb, flags, vfs) }
             guard let pDb = pDb else { throw Mite3Error(code: SQLITE_ERROR) }
@@ -778,9 +778,9 @@ fileprivate func mite3Exec<Row: Decodable, Params: Encodable>(pDb: OpaquePointer
     
     statementLoop:
     while let pSql = pTail {
-        let prepareResult = sqlite3_prepare_v2(pDb, pSql, Int32(strlen(pTail!)), &pStmt, &pTail)
-        if prepareResult != SQLITE_OK {
-            throw Mite3Error(pDb: pDb, code: prepareResult, sql: String(cString: pSql), errorOffset: sqlite3_error_offset(pDb))
+        
+        try Mite3.call {
+            sqlite3_prepare_v2(pDb, pSql, Int32(strlen(pTail!)), &pStmt, &pTail)
         }
         
         guard let pStmt = pStmt else {
@@ -789,7 +789,7 @@ fileprivate func mite3Exec<Row: Decodable, Params: Encodable>(pDb: OpaquePointer
         }
         defer { sqlite3_finalize(pStmt) }
         
-        let _ = try mite3BindParameters(pStmt: pStmt, params: params)
+        try Mite3.bindParameters(pStmt: pStmt, params: params)
         
         stepLoop:
         while true {
@@ -798,16 +798,11 @@ fileprivate func mite3Exec<Row: Decodable, Params: Encodable>(pDb: OpaquePointer
             case SQLITE_DONE:
                 continue statementLoop
             case SQLITE_ROW:
-                if Row.self != Mite3EmptyRow.self {
-                    let row = try mite3ReadRow(pStmt: pStmt, type: Row.self)
-                    if (!callback(row)) {
-                        return SQLITE_ABORT // note: SQLITE_ABORT here is NOT treated as an error. It's just a result code.
-                    }
+                let row = try Mite3.readRow(pStmt: pStmt, type: Row.self)
+                if (!callback(row)) {
+                    return SQLITE_ABORT // note: SQLITE_ABORT here does NOT throw an error. It's just a result code.
                 }
                 continue stepLoop
-            case SQLITE_BUSY:
-                // TODO: retry in certain circumstances
-                throw Mite3Error(pDb: pDb, code: code)
             default:
                 throw Mite3Error(pDb: pDb, code: code)
             }
