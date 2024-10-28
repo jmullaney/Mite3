@@ -6,7 +6,7 @@ import SQLite3
 public typealias Mite3Result = Result<Int32, Mite3Error>
 public typealias Mite3QueryResult<Row> = Result<[Row], Mite3Error>
 public typealias Mite3QueryOneResult<Row> = Result<Row, Mite3Error>
-public typealias Mite3QueryOneOptionalResult<Row> = Result<Row?, Mite3Error>
+public typealias Mite3QueryOptionalResult<Row> = Result<Row?, Mite3Error>
 
 /// An error type.
 ///
@@ -57,7 +57,8 @@ public enum Mite3Error: Error {
 /// | | |
 /// |-|-|
 /// | Result Code Utilities | convert the result of calling an sqlite3 API function to a thrown error when the result is an error, or to a success/failure `Result<S,F>`. |
-/// | `exec()` / `query()` / `queryOne()` / `queryOneOptional()` | Execute SQL statments on a database connection. Accepts any `Encodable` for parameters, and any `Decodable` for results. |
+/// | `exec()` / `query()` / `queryOne()` / `queryOptional()` | Execute SQL statments on a database connection. Accepts `Encodable` values for parameters, and any `Decodable` for results. |
+/// | `queryInt()` / `queryOptionalInt()` / `queryString()` / `queryOptionalString()` | Convenient variants of queryOne() and queryOptional() that return a specific type of value. |
 /// | Binding and reading to/from statements | Use the same `Codable`-based parameter binding and row reading that the `exec` and `query*` functions provide, but directly on sqlite3 statements prepared outside of Mite3.|
 /// | `Mite3.Value` utility type| A variant type capable of directly representing sqlite3 fundamental data types. |
 /// | `Mite3.CustomRepresentation` | Customizing how Mite3 binds/reads values to/from statements. |
@@ -117,9 +118,9 @@ public enum Mite3Error: Error {
 /// - Use the `exec` variants without callback when you don't need results returned.
 /// - Use the `exec` variants with callback when you want results returned via callback.
 /// - Use the `query` variants when you want all the result rows returned.
-/// - Use the `queryOneOptional` variants when you want at most one row returned. (If the SQL could return multiple rows, the first one is returned.
 /// - Use the `queryOne` variants when you want one row returned. (If the SQL could return multiple rows, the first one is returned.) An error occurs if
-/// at least one row isn't returned.
+///   at least one row isn't returned.
+/// - Use the `queryOptional` variants when you want at most one row returned. (If the SQL could return multiple rows, the first one is returned.
 ///
 /// ### Binding Parameters and Reading Rows Directly to/from Statemenets ###
 ///
@@ -326,14 +327,34 @@ public struct Mite3 {
         try mite3Query(pDb: pDb, sql: sql, params: params, type: type)
     }
 
-    /// Executes SQL and returns the first result row, if any.
-    public static func queryOneOptional<Row: Decodable>(pDb: OpaquePointer, sql: String, params: Encodable..., type: Row.Type) throws (Mite3Error) -> Row? {
-        try mite3QueryOneOptional(pDb: pDb, sql: sql, params: params, type: type)
-    }
-
     /// Executes SQL and returns the first result row
     public static func queryOne<Row: Decodable>(pDb: OpaquePointer, sql: String, params: Encodable..., type: Row.Type) throws (Mite3Error) -> Row {
         try mite3QueryOne(pDb: pDb, sql: sql, params: params, type: type)
+    }
+
+    /// Executes SQL and returns the first result row as an integer
+    public static func queryInt(pDb: OpaquePointer, sql: String, params: Encodable...) throws (Mite3Error) -> Int {
+        try mite3QueryOne(pDb: pDb, sql: sql, params: params, type: Int.self)
+    }
+
+    /// Executes SQL and returns the first result row as a string
+    public static func queryString(pDb: OpaquePointer, sql: String, params: Encodable...) throws (Mite3Error) -> String {
+        try mite3QueryOne(pDb: pDb, sql: sql, params: params, type: String.self)
+    }
+
+    /// Executes SQL and returns the first result row, if any.
+    public static func queryOptional<Row: Decodable>(pDb: OpaquePointer, sql: String, params: Encodable..., type: Row.Type) throws (Mite3Error) -> Row? {
+        try mite3QueryOptional(pDb: pDb, sql: sql, params: params, type: type)
+    }
+
+    /// Executes SQL and returns the first result row as an integer, if any.
+    public static func queryOptionalInt(pDb: OpaquePointer, sql: String, params: Encodable...) throws (Mite3Error) -> Int? {
+        try mite3QueryOptional(pDb: pDb, sql: sql, params: params, type: Int.self)
+    }
+
+    /// Executes SQL and returns the first result row as a string, if any.
+    public static func queryOptionalString(pDb: OpaquePointer, sql: String, params: Encodable...) throws (Mite3Error) -> String? {
+        try mite3QueryOptional(pDb: pDb, sql: sql, params: params, type: String.self)
     }
 
     /// Binds `Encodable` parameters to a prepared statement.
@@ -567,14 +588,30 @@ public struct Mite3 {
             try mite3Query(pDb: pDb, sql: sql, params: params, type: type)
         }
 
-        public func queryOneOptional<Row: Decodable>(sql: String, params: Encodable..., type: Row.Type) throws (Mite3Error) -> Row? {
-            try mite3QueryOneOptional(pDb: pDb, sql: sql, params: params, type: type)
-        }
-
         public func queryOne<Row: Decodable>(sql: String, params: Encodable..., type: Row.Type) throws (Mite3Error) -> Row {
             try mite3QueryOne(pDb: pDb, sql: sql, params: params, type: type)
         }
-        
+
+        public func queryInt(sql: String, params: Encodable...) throws (Mite3Error) -> Int {
+            try mite3QueryOne(pDb: pDb, sql: sql, params: params, type: Int.self)
+        }
+
+        public func queryString(sql: String, params: Encodable...) throws (Mite3Error) -> String {
+            try mite3QueryOne(pDb: pDb, sql: sql, params: params, type: String.self)
+        }
+
+        public func queryOptional<Row: Decodable>(sql: String, params: Encodable..., type: Row.Type) throws (Mite3Error) -> Row? {
+            try mite3QueryOptional(pDb: pDb, sql: sql, params: params, type: type)
+        }
+
+        public func queryOptionalInt(sql: String, params: Encodable...) throws (Mite3Error) -> Int? {
+            try mite3QueryOptional(pDb: pDb, sql: sql, params: params, type: Int.self)
+        }
+
+        public func queryOptionalString(sql: String, params: Encodable...) throws (Mite3Error) -> String? {
+            try mite3QueryOptional(pDb: pDb, sql: sql, params: params, type: String.self)
+        }
+
         public func execResult<Row: Decodable>(sql: String, params: Encodable..., callback: (Row) -> Bool) -> Mite3Result {
             Mite3Result() { () throws (Mite3Error) in
                 try mite3Exec(pDb: pDb, sqlCString: sql, params: params, callback: callback)
@@ -593,15 +630,39 @@ public struct Mite3 {
             }
         }
 
-        public func queryOneOptionalResult<Row: Decodable>(sql: String, params: Encodable..., type: Row.Type) -> Mite3QueryOneOptionalResult<Row> {
-            Mite3QueryOneOptionalResult<Row>() { () throws (Mite3Error) in
-                try mite3QueryOneOptional(pDb: pDb, sql: sql, params: params, type: type)
-            }
-        }
-
         public func queryOneResult<Row: Decodable>(sql: String, params: Encodable..., type: Row.Type) -> Mite3QueryOneResult<Row> {
             Mite3QueryOneResult<Row>() { () throws (Mite3Error) in
                 try mite3QueryOne(pDb: pDb, sql: sql, params: params, type: type)
+            }
+        }
+
+        public func queryIntResult(sql: String, params: Encodable...) -> Mite3QueryOneResult<Int> {
+            Mite3QueryOneResult<Int>() { () throws (Mite3Error) in
+                try mite3QueryOne(pDb: pDb, sql: sql, params: params, type: Int.self)
+            }
+        }
+
+        public func queryStringResult(sql: String, params: Encodable...) -> Mite3QueryOneResult<String> {
+            Mite3QueryOneResult<String>() { () throws (Mite3Error) in
+                try mite3QueryOne(pDb: pDb, sql: sql, params: params, type: String.self)
+            }
+        }
+
+        public func queryOptionalResult<Row: Decodable>(sql: String, params: Encodable..., type: Row.Type) -> Mite3QueryOptionalResult<Row> {
+            Mite3QueryOptionalResult<Row>() { () throws (Mite3Error) in
+                try mite3QueryOptional(pDb: pDb, sql: sql, params: params, type: type)
+            }
+        }
+
+        public func queryOptionalIntResult(sql: String, params: Encodable...) -> Mite3QueryOptionalResult<Int> {
+            Mite3QueryOptionalResult<Int>() { () throws (Mite3Error) in
+                try mite3QueryOptional(pDb: pDb, sql: sql, params: params, type: Int.self)
+            }
+        }
+
+        public func queryOptionalStringResult(sql: String, params: Encodable...) -> Mite3QueryOptionalResult<String> {
+            Mite3QueryOptionalResult<String>() { () throws (Mite3Error) in
+                try mite3QueryOptional(pDb: pDb, sql: sql, params: params, type: String.self)
             }
         }
     }
@@ -616,21 +677,21 @@ fileprivate func mite3Query<Row: Decodable>(pDb: OpaquePointer, sql: String, par
     return rows
 }
 
-fileprivate func mite3QueryOneOptional<Row: Decodable>(pDb: OpaquePointer, sql: String, params: [Encodable], type: Row.Type) throws (Mite3Error) -> Row? {
+fileprivate func mite3QueryOne<Row: Decodable>(pDb: OpaquePointer, sql: String, params: [Encodable], type: Row.Type) throws (Mite3Error) -> Row {
+    if let row = try mite3QueryOptional(pDb: pDb, sql: sql, params: params, type: type) {
+        return row
+    } else {
+        throw Mite3Error.rowReadingError(nil, "no result row")
+    }
+}
+
+fileprivate func mite3QueryOptional<Row: Decodable>(pDb: OpaquePointer, sql: String, params: [Encodable], type: Row.Type) throws (Mite3Error) -> Row? {
     var resultRow: Row? = nil
     _ = try mite3Exec(pDb: pDb, sqlCString: sql, params: params, callback: { (row: Row) -> Bool in
         resultRow = row
         return false
     })
     return resultRow
-}
-
-fileprivate func mite3QueryOne<Row: Decodable>(pDb: OpaquePointer, sql: String, params: [Encodable], type: Row.Type) throws (Mite3Error) -> Row {
-    if let row = try mite3QueryOneOptional(pDb: pDb, sql: sql, params: params, type: type) {
-        return row
-    } else {
-        throw Mite3Error.rowReadingError(nil, "no result row")
-    }
 }
 
 fileprivate func mite3BindParameters(pStmt: OpaquePointer, params: [Encodable]) throws (Mite3Error) -> Int32 {
