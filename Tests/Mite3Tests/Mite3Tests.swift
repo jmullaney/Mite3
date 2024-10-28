@@ -46,7 +46,7 @@ struct TestRow: Codable {
     do {
         try Mite3.exec(pDb: pDb, sql: "INSERT INTO test(name, props) VALUES ('aaa3', ?)", params: [somePropsData])
         var output: [String] = .init()
-        try Mite3.exec(pDb: pDb, sql: "SELECT id, name, props FROM test WHERE name like ? ORDER BY id", params: ["a%", "b"], callback: { (row: TestRow) -> Bool in
+        try Mite3.exec(pDb: pDb, sql: "SELECT id, name, props FROM test WHERE name like ? ORDER BY id", params: "a%", "b", callback: { (row: TestRow) -> Bool in
             let propsDesc = if let props = row.props {
                 props.description
             } else {
@@ -60,7 +60,6 @@ struct TestRow: Codable {
             "B row: id = 4, name = \"aaa2\", props = nil",
             "B row: id = 5, name = \"aaa3\", props = [Mite3Tests.SubRow(prop: \"a\", val: \"b\"), Mite3Tests.SubRow(prop: \"c\", val: \"d\")]"
         ])
-        
     }
     
     // basic query scenario
@@ -76,6 +75,46 @@ struct TestRow: Codable {
         ])
     }
     
+    // basic query scenario - two params directly
+    do {
+        var output: [String] = .init()
+        for row in try Mite3.query(pDb: pDb, sql: "SELECT id, name FROM test WHERE (name like ? or name like ?) AND props IS NULL ORDER BY id", params: "a%", "b%", type: [Mite3.Value].self) {
+            output.append("D1 row: \(row)")
+        }
+        #expect(output == [
+            "D1 row: [1, aaa]",
+            "D1 row: [2, bbb]",
+            "D1 row: [4, aaa2]",
+        ])
+    }
+
+    // basic query scenario - two params in an array
+    do {
+        var output: [String] = .init()
+        for row in try Mite3.query(pDb: pDb, sql: "SELECT id, name FROM test WHERE (name like ? or name like ?) AND props IS NULL ORDER BY id", params: ["a%", "b%"], type: [Mite3.Value].self) {
+            output.append("D1 row: \(row)")
+        }
+        #expect(output == [
+            "D1 row: [1, aaa]",
+            "D1 row: [2, bbb]",
+            "D1 row: [4, aaa2]",
+        ])
+    }
+
+    // basic query scenario - two params in an object
+    do {
+        struct MyParams: Codable { let paramA: String; let paramB: String; let paramC: String }
+        var output: [String] = .init()
+        for row in try Mite3.query(pDb: pDb, sql: "SELECT id, name FROM test WHERE (name like :paramA or name like :paramB) AND props IS NULL ORDER BY id", params: MyParams(paramA: "a%", paramB: "b%", paramC: "c%"), type: [Mite3.Value].self) {
+            output.append("D1 row: \(row)")
+        }
+        #expect(output == [
+            "D1 row: [1, aaa]",
+            "D1 row: [2, bbb]",
+            "D1 row: [4, aaa2]",
+        ])
+    }
+
     // basic queryOneOptional scenarios
     do {
         let optValue = try Mite3.queryOneOptional(pDb: pDb, sql: "SELECT '12313123 33333'", type: Mite3.Value.self)
@@ -172,5 +211,4 @@ struct TestRow: Codable {
             "E name = [5, aaa3]",
         ])
     }
-
 }

@@ -17,7 +17,7 @@ import SQLite3
     try Mite3.exec(pDb: pDb, sql: "CREATE TABLE user (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT)")
     try Mite3.exec(pDb: pDb,
         sql: "INSERT INTO user(name) VALUES (?), (?), (?)",
-        params: ["John Smith", "Annie Oakley", "Jerry West"]
+        params: "John Smith", "Annie Oakley", "Jerry West"
     )
     
     let jUsers = try Mite3.query(pDb: pDb,
