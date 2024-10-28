@@ -1,7 +1,8 @@
 Utilities to make it easier and more convenient to use sqlite3 from Swift and
 reduce related boilerplate code.
 
-Note: this is specifically intended to <u>not</u> wrap sqlite3 (<a href="#whynowrapper">more on this</a>). 
+Note: this is specifically intended to <u>not</u> wrap sqlite3. That makes this useful for, e.g., creating an application-level data access wrapper
+around sqlite where an intermediate wrapper would ultimately get in the way more than help.
 
 | | |
 |-|-|
@@ -18,20 +19,20 @@ Note: this is specifically intended to <u>not</u> wrap sqlite3 (<a href="#whynow
     var pDb: OpaquePointer! = nil
     try Mite3.call { sqlite3_open(":memory:", &pDb) }
     defer { sqlite3_close(pDb) }
-    
+
     try Mite3.exec(pDb: pDb, sql: "CREATE TABLE user (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT)")
     try Mite3.exec(pDb: pDb,
         sql: "INSERT INTO user(name) VALUES (?), (?), (?)",
         params: ["John Smith", "Annie Oakley", "Jerry West"]
     )
-    
+
     let jUsers = try Mite3.query(pDb: pDb,
         sql: "SELECT id, name FROM user WHERE name like ? ORDER BY name",
         params: "J%",
         type: User.self
     )
     print(jUsers) // output: [{"id":3,"name":"Jerry West"}, {"id":1,"name":"John Smith"}]
-    
+
     let aRowOfValues = try Mite3.queryOne(pDb: pDb,
         sql: "SELECT datetime('2024-10-03 10:11:12') someDate, 1+2+3 someNum, 'abc' someStr",
         type: [Mite3.Value].self
@@ -39,7 +40,7 @@ Note: this is specifically intended to <u>not</u> wrap sqlite3 (<a href="#whynow
     print(aRowOfValues[0]) // output: 2024-10-03 10:11:12
     print(aRowOfValues[1]) // output: 6
     print(aRowOfValues[2]) // output: abc
-    
+
     struct User: Codable, CustomStringConvertible {
         let id: Int
         let name: String
@@ -63,17 +64,11 @@ These functions execute SQL statements on a database connection.
 
 Parameters can be specified as Encodable values and the results are returned as a Decodable type.
 
-A simple Encodable value can be specified when the statement has one parameter.
-Multiple parameters can be passed as an array of Encodable values (when binding by index) or as a
-complex Encodable value (whein binding by name).
-
-Likewise, the result type can be a simple Decodable type for statements that return a single column, or an array or object of Decodable
-values for statements that return multiple columns.
-
-Use the `exec` variants when you want results returned via callback or don't need results returned.
-Use the `query` variants when you want all the result rows returned.
-Use the `queryOneOptional` variants when you want at most one row returned. (If the SQL could return multiple rows, the first one is returned.
-Use the `queryOne` variants when you want one row returned. (If the SQL could return multiple rows, the first one is returned.) An error occurs if
+- Use the `exec` variants without callback when you don't need results returned.
+- Use the `exec` variants with callback when you want results returned via callback.
+- Use the `query` variants when you want all the result rows returned.
+- Use the `queryOneOptional` variants when you want at most one row returned. (If the SQL could return multiple rows, the first one is returned.
+- Use the `queryOne` variants when you want one row returned. (If the SQL could return multiple rows, the first one is returned.) An error occurs if
 at least one row isn't returned.
 
 ### Binding Parameters and Reading Rows Directly to/from Statemenets ###
@@ -101,19 +96,37 @@ See https://www.sqlite.org/c3ref/c_blob.html
 This can be useful for receiving arbitrary values in a form the same as or losslessly converted from the form sqlite3 uses.
 E.g., you can use [Mite3.Value].self as the result type for any query, and receive whatever values sqlite3 provides.
 
-### Standard Parameter Binding and Row Reading ###
+### Parameter Binding and Row Reading ###
 
-Certain types have a default paramerer-binding/row-reading form. See below.
+Functions accept SQL parameters through a variadic `params: Encodable...` parameter.
+This means you can specify zero, one, or more SQL parameters, as needed by the SQL being
+executed.
 
-- When parameters are specified as a simple value, it binds by index to the first statement parameter.
-- When parameters are specified as an array of values, each element is bound by index to the statatement parameters.
-- When the the parameters are specified as a complex object, each property is bound by name to the statmenet parameters, using the Encodable coding
-  keys as the names.
+- Certain common types have a standard binding (see below). These are accepted as-is, and
+  are bound by index to SQL parameters.
+- When an array value is specified directly, its elements are bound by index to SQL parameters.
+  Extra values are ignored.
+- When an object/struct is specified, its properties are bound by name, case-insensitive, to SQL
+  paramerers, using the object's `Encodable` coding keys as named. Extra properties -- those
+  that don't correspond to a SQL parameter -- are ignored.
+- Types can implement  `Mite3.CustomRepresentation` to customize how its values
+  are bound as a sqlite parameter (see below).
+
+Note: since `params` is variadic, multiple arrays and objects may be specified. In that case, values
+bound from later arrays and objects overwrite values bound from earlier ones. (Use this capability
+carefully, since it's confusing and usually not necessary.)
+
+Note 2: values nested in an array or object that don't have a standard or custom representation
+are serialized using a JSONEncoder.
+
+Results are converted to Swift types that implement `Decodable`.
+
 - When the result row type is a simple value, it's value is read from the first column value
 - When the result row type is an array of values, the row is returned as an array of column values.
-- When the result row type is a complex object, each property's value is read from the result columns by property name, using the Decodable coding key.
+- When the result row type is a complex object, each property's value is read from the result columns by
+  property name (case-insensitive), using the Decodable coding key.
 
-### Standard Forms ###
+### Standard Binding/Reading ###
 
     | Swift Type | sqlite3 data type               |
     | Int8       | INTEGER (64-bit integer)        |
@@ -135,12 +148,12 @@ Certain types have a default paramerer-binding/row-reading form. See below.
     | Data       | BLOB (bytes)                    |
     | Date       | as ISO 8601 date/time as TEXT   |
 
-Codable values below the top level are encoded/decoded as JSON using sqlite3's TEXT data type.
+Nested `Codable` values are encoded/decoded as JSON as use sqlite3's TEXT data type.
 
 ### Customizing Parameter Binding and Row Reading ###
 
 You can extend a type to implement `Mite3.CustomRepresentation` to customize how values of
-the type are bound as parameters or read as result rows.
+the type are bound as parameters or read as result row column values.
 
 `func bind(binder: ParameterBinder) -> Int32` determins how a value is bound as a parameter.
 The ParameterBinder instance passed in provides utilities for binding various kinds of primitive values in a typical way.
@@ -157,12 +170,3 @@ precedence over the Codable implementation.
 ### Mite3.Connection ###
 
 Provides an OO-style interface as an alternative to the functions that take a database pointer as the first parameter.
-
-<p id="whynowrapper">
-### Why No Wrapper?
-Sqlite3 already has a carefully designed, carefully documented and carefully maintained API that can be called 
-directly from Swift.
-
-Why learn and use some alternative similar-but-different wrapper API rather than the real 
-thing? Especially when the wrapper is likely incomplete and leaky... ultimately you'll need to learn the
-sqlite3 API anyway, on top of the wrapper API, and work out the details of how the wrapper maps to sqlite3.
