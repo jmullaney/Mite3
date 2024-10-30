@@ -117,10 +117,10 @@ struct TestRow: Codable {
 
     // basic queryOneOptional scenarios
     do {
-        let optValue = try Mite3.queryOneOptional(pDb: pDb, sql: "SELECT '12313123 33333'", type: Mite3.Value.self)
+        let optValue = try Mite3.queryOptional(pDb: pDb, sql: "SELECT '12313123 33333'", type: Mite3.Value.self)
         #expect(optValue == .some(Mite3.Value.TEXT("12313123 33333")))
         
-        let optValue2 = try Mite3.queryOneOptional(pDb: pDb, sql: "SELECT '12313123 33333' FROM test WHERE 0=1", type: Mite3.Value.self)
+        let optValue2 = try Mite3.queryOptional(pDb: pDb, sql: "SELECT '12313123 33333' FROM test WHERE 0=1", type: Mite3.Value.self)
         #expect(optValue2 == .none)
     }
     
