@@ -1,7 +1,9 @@
 //  Mite3.swift
 
 import Foundation
+#if !MITE3_CUSTOM_SQLITE3
 import SQLite3
+#endif
 
 public typealias Mite3Result = Result<Int32, Mite3Error>
 public typealias Mite3QueryResult<Row> = Result<[Row], Mite3Error>
