@@ -115,22 +115,22 @@ struct TestRow: Codable {
         ])
     }
 
-    // basic queryOneOptional scenarios
+    // basic getOptional scenarios
     do {
-        let optValue = try Mite3.queryOptional(pDb: pDb, sql: "SELECT '12313123 33333'", type: Mite3.Value.self)
+        let optValue = try Mite3.getOptional(pDb: pDb, sql: "SELECT '12313123 33333'", type: Mite3.Value.self)
         #expect(optValue == .some(Mite3.Value.TEXT("12313123 33333")))
         
-        let optValue2 = try Mite3.queryOptional(pDb: pDb, sql: "SELECT '12313123 33333' FROM test WHERE 0=1", type: Mite3.Value.self)
+        let optValue2 = try Mite3.getOptional(pDb: pDb, sql: "SELECT '12313123 33333' FROM test WHERE 0=1", type: Mite3.Value.self)
         #expect(optValue2 == .none)
     }
     
-    // basic queryOne scenarios
+    // basic get scenarios
     do {
-        let value = try Mite3.queryOne(pDb: pDb, sql: "SELECT '12313123 33333'", type: Mite3.Value.self)
+        let value = try Mite3.get(pDb: pDb, sql: "SELECT '12313123 33333'", type: Mite3.Value.self)
         #expect(value == Mite3.Value.TEXT("12313123 33333"))
         
         #expect(throws: Mite3Error.self, performing: {
-            try Mite3.queryOne(pDb: pDb, sql: "SELECT '12313123 33333' FROM test WHERE 0=1", type: Mite3.Value.self)
+            try Mite3.get(pDb: pDb, sql: "SELECT '12313123 33333' FROM test WHERE 0=1", type: Mite3.Value.self)
         })
     }
 
@@ -175,7 +175,7 @@ struct TestRow: Codable {
         
         let now = Date()
         try Mite3.exec(pDb: pDb, sql: "INSERT INTO dtest(name, dvalue) VALUES ('date1', ?)", params: now)
-        let dValue = try Mite3.queryOne(pDb: pDb, sql: "SELECT dValue FROM dtest WHERE name = 'date1'", type: Mite3.Value.self)
+        let dValue = try Mite3.get(pDb: pDb, sql: "SELECT dValue FROM dtest WHERE name = 'date1'", type: Mite3.Value.self)
         #expect(dValue.description == iso8601StringLocalMs(date: now))
     }
 

@@ -27,7 +27,7 @@ import SQLite3
     )
     print(jUsers) // output: [{"id":3,"name":"Jerry West"}, {"id":1,"name":"John Smith"}]
     
-    let aRowOfValues = try Mite3.queryOne(pDb: pDb,
+    let aRowOfValues = try Mite3.get(pDb: pDb,
         sql: "SELECT datetime('2024-10-03 10:11:12') someDate, 1+2+3 someNum, 'abc' someStr",
         type: [Mite3.Value].self
     )

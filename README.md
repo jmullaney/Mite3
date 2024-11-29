@@ -7,8 +7,8 @@ around sqlite where an intermediate wrapper would ultimately get in the way more
 | | |
 |-|-|
 | Result Code Utilities | convert the result of calling an sqlite3 API function to a thrown error when the result is an error, or to a success/failure `Result<S,F>`. |
-| `exec()` / `query()` / `queryOne()` / `queryOptional()` | Execute SQL statments on a database connection. Accepts `Encodable` values for parameters, and any `Decodable` for results. |
-| `queryInt()` / `queryOptionalInt()` / `queryString()` / `queryOptionalString()` | Convenient variants of queryOne() and queryOptional() that return a specific type of value. |
+| `exec()` / `query()` / `get()` / `getOptional()` | Execute SQL statments on a database connection. Accepts `Encodable` values for parameters, and any `Decodable` for results. |
+| `queryInt()` / `getOptionalInt()` / `queryString()` / `getOptionalString()` | Convenient variants of get() and getOptional() that return a specific type of value. |
 | Binding and reading to/from statements | Use the same `Codable`-based parameter binding and row reading that the `exec` and `query*` functions provide, but directly on sqlite3 statements prepared outside of Mite3.|
 | `Mite3.Value` utility type| A variant type capable of directly representing sqlite3 fundamental data types. |
 | `Mite3.CustomRepresentation` | Customizing how Mite3 binds/reads values to/from statements. |
@@ -34,7 +34,7 @@ around sqlite where an intermediate wrapper would ultimately get in the way more
     )
     print(jUsers) // output: [{"id":3,"name":"Jerry West"}, {"id":1,"name":"John Smith"}]
 
-    let aRowOfValues = try Mite3.queryOne(pDb: pDb,
+    let aRowOfValues = try Mite3.get(pDb: pDb,
         sql: "SELECT datetime('2024-10-03 10:11:12') someDate, 1+2+3 someNum, 'abc' someStr",
         type: [Mite3.Value].self
     )
@@ -68,9 +68,9 @@ Parameters can be specified as Encodable values and the results are returned as 
 - Use the `exec` variants without callback when you don't need results returned.
 - Use the `exec` variants with callback when you want results returned via callback.
 - Use the `query` variants when you want all the result rows returned.
-- Use the `queryOne` variants when you want one row returned. (If the SQL could return multiple rows, the first one is returned.) An error occurs if
+- Use the `get` variants when you want one row returned. (If the SQL could return multiple rows, the first one is returned.) An error occurs if
   at least one row isn't returned.
-- Use the `queryOptional` variants when you want at most one row returned. (If the SQL could return multiple rows, the first one is returned.
+- Use the `getOptional` variants when you want at most one row returned. (If the SQL could return multiple rows, the first one is returned.
 
 ### Binding Parameters and Reading Rows Directly to/from Statemenets ###
 
